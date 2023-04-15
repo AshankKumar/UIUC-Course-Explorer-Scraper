@@ -2,16 +2,13 @@ import weaviate
 import json
 import requests
 
-API_URL = "https://uac5lhb2yub711ud.us-east-1.aws.endpoints.huggingface.cloud"
-headers = {
-  "Authorization": "Bearer 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",
-}
+
 
 def get_client():
     resource_owner_config = weaviate.AuthClientPassword(
-    username = "ashankkumar01@gmail.com", 
-    password = "ThisIsDumb@1", 
-    scope = "offline_access"
+    username = 
+    password = 
+    scope = 
     )
     
     return weaviate.Client(
