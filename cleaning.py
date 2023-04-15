@@ -115,6 +115,19 @@ def parse_list(str_list):
 def apply_function(lst):
     return [new_enums[element] for element in lst]
 
+def transform_credit_hours(value):
+    value = value.strip().rstrip('.').replace(' OR ', '-').replace(' TO ', '-').replace(' or ', '-').replace(' to ', '-')
+    value = value.replace('hours', '')
+    if '-' in value:
+        print(value)
+        x, y = value.split('-')
+        credit_options = True
+        credit_hours = int((float(x) + float(y)) / 2)
+    else:
+        credit_options = False
+        credit_hours = int(float(value))
+    return pd.Series({'Credit Options': credit_options, 'Credit Hours': credit_hours})
+
 # Convert Column to List
 df['Degree Attributes'] = df['Degree Attributes'].apply(parse_list)
 
@@ -124,15 +137,20 @@ df['Degree Attributes'] = df['Degree Attributes'].apply(lambda x: apply_function
 # Get rid of NaN in average gpa column
 df['Mean Grade'] = df['Mean Grade'].fillna(-1)
 
-# print(df.head())
+df[['Credit Options', 'Credit Hours']] = df['Credit Hours'].apply(transform_credit_hours)
+
+#TODO: Vectorized Description:
+df['Description Vectorized'] = 'The course subject is ' + df['Subject'] + '.\n' + 'The course name is ' + df['Name'] + '.\n' + 'The course is about ' + df['Description']
+
+df['Credit Hours'] = df['Credit Hours'] + 7
+
+print(df.head())
+
+df.to_csv('final4.csv', index=False)
 
 # Convert to Json
 data_dict = df.to_dict('records')
-with open('final.json', 'w') as f:
+with open('final4.json', 'w') as f:
     json.dump(data_dict, f)
-# data = []
-# for i, row in df.iterrows():
-#     # dic_entry = {}
-#     print(row)
 
 
