@@ -7,8 +7,7 @@ import json
 import pandas as pd
 
 def scrape(term, year):
-    # url = f'https://courses.illinois.edu/cisapp/explorer/schedule/{year}/{term}.xml'
-    url = 'https://courses.illinois.edu/cisapp/explorer/schedule/2023/fall.xml'
+    url = f'https://courses.illinois.edu/cisapp/explorer/schedule/{year}/{term}.xml'
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'lxml-xml')
 
@@ -38,8 +37,6 @@ def scrape_with_provided_json(json_file):
     with open(json_file, "r") as f:
         subject_dict = json.load(f)
 
-    # df = pd.DataFrame(columns=['Subject', 'Subject Abbreviation', 'Course', 'Name', 'Description', 'Credit Hours', 'Degree Attributes'])
-    # data = ['Subject', 'Subject Abbreviation', 'Course', 'Name', 'Description', 'Credit Hours', 'Degree Attributes']
     data = []
     for subject_id, subject_object in subject_dict.items():
         print(f"Processing: {subject_id}")
@@ -81,9 +78,7 @@ def scrape_with_provided_json(json_file):
 if __name__ == "__main__":
     num_args = len(sys.argv) - 1
 
-    if (num_args == 1):
-        scrape_with_provided_json(sys.argv[1])
-    elif (num_args == 2):
+    if (num_args == 2):
         term = sys.argv[1]
         year = sys.argv[2]
         scrape(term, year)
