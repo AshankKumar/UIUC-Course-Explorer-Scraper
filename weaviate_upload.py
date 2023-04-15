@@ -5,18 +5,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 
 MODEL = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
-
-# def get_client():
-#     resource_owner_config = weaviate.AuthClientPassword(
-#     username = "ashankkumar01@gmail.com", 
-#     password = "ThisIsDumb@1", 
-#     scope = "offline_access"
-#     )
     
-#     return weaviate.Client(
-#     url = "https://smartcoursesearch-stsqaofp.weaviate.network",
-#     auth_client_secret=resource_owner_config,
-#     )
 
 
 
