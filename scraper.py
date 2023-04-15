@@ -6,7 +6,7 @@ import time
 import json
 import pandas as pd
 
-def scrape(term, year):
+def scrape(term, year, rate_limit=1):
     url = f'https://courses.illinois.edu/cisapp/explorer/schedule/{year}/{term}.xml'
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'lxml-xml')
@@ -20,6 +20,7 @@ def scrape(term, year):
     
     courses_dictionary = defaultdict(defaultdict)
     i = 1
+    print ("Getting Pages for Subjects")
     for subject_id, href in subjects:
         response = requests.get(href)
         soup = BeautifulSoup(response.content, 'lxml-xml')
@@ -28,17 +29,12 @@ def scrape(term, year):
         courses_dictionary[subject_id] = {'subject_name': subject_name, 'courses': [course['href'] for course in courses]}
         print(f'{i}/{len(subjects)}')
         i += 1
-        time.sleep(1)
+        time.sleep(rate_limit)
+        break
 
-    with open("subjects_and_courses.json", "w") as f:
-        json.dump(courses_dictionary, f)
-
-def scrape_with_provided_json(json_file):
-    with open(json_file, "r") as f:
-        subject_dict = json.load(f)
-
+    print ("Getting Courses for each Subject")
     data = []
-    for subject_id, subject_object in subject_dict.items():
+    for subject_id, subject_object in courses_dictionary.items():
         print(f"Processing: {subject_id}")
         subject_name = subject_object['subject_name']
         courses = subject_object['courses']
@@ -62,14 +58,14 @@ def scrape_with_provided_json(json_file):
                 new_row = [subject_name, subject_id, course_number, course_name, description, credit_hours, attributes]
                 data.append(new_row)
 
-                time.sleep(1)
+                time.sleep(rate_limit)
                 i += 1
             except Exception as e:
                 print(e)
                 print(c)
-        
+        break
     df = pd.DataFrame(data, columns = ['Subject', 'Subject Abbreviation', 'Course', 'Name', 'Description', 'Credit Hours', 'Degree Attributes'])
-    df.to_csv("fa-2023-courses.csv", index=False)
+    df.to_csv(f"{term}-{year}-courses.csv", index=False)
 
 
 
