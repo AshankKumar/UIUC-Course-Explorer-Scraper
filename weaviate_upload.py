@@ -1,28 +1,28 @@
 import weaviate
 import json
 import requests
+from sentence_transformers import SentenceTransformer
+import numpy as np
 
-API_URL = "https://uac5lhb2yub711ud.us-east-1.aws.endpoints.huggingface.cloud"
-headers = {
-  "Authorization": "Bearer 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",
-}
+MODEL = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
 
-def get_client():
-    resource_owner_config = weaviate.AuthClientPassword(
-    username = "ashankkumar01@gmail.com", 
-    password = "ThisIsDumb@1", 
-    scope = "offline_access"
-    )
+# def get_client():
+#     resource_owner_config = weaviate.AuthClientPassword(
+#     username = "ashankkumar01@gmail.com", 
+#     password = "ThisIsDumb@1", 
+#     scope = "offline_access"
+#     )
     
-    return weaviate.Client(
-    url = "https://smartcoursesearch2.weaviate.network",
-    auth_client_secret=resource_owner_config,
-    )
+#     return weaviate.Client(
+#     url = "https://smartcoursesearch-stsqaofp.weaviate.network",
+#     auth_client_secret=resource_owner_config,
+#     )
 
 
-def get_vector(payload):
-    response = requests.post(API_URL, headers=headers, json=payload)
-    return response.json()
+
+
+def get_vector(text):
+    return MODEL.encode(text)
 
 def batch_get_vector(start, end, data):
 
@@ -30,17 +30,17 @@ def batch_get_vector(start, end, data):
     import time
     start = time.time()
     print('started')
-    output = get_vector({"inputs":descriptions})['embeddings']
+    output = get_vector(descriptions)
     print(time.time()-start)
     print(len(output))
     print(len(output[0]))
     return output
 
 def upload_data():
-    client.schema.delete_class("Course")
+    client.schema.delete_class("Uiuc_course_search")
 
     class_obj = {
-        "class": "Course",
+        "class": "Uiuc_course_search",
         "vectorizer": "none",  
         "properties": [
             {
@@ -90,7 +90,7 @@ def upload_data():
                 "int[]"
             ],
             "description": "Numerical representation of a course's degree attrs",
-            "name": "degree_attrs_codes",
+            "name": "degree_attrs",
             },
             {
             "dataType": [
@@ -98,6 +98,13 @@ def upload_data():
             ],
             "description": "Full subject name",
             "name": "full_subject",
+            },
+            {
+            "dataType": [
+                "boolean"
+            ],
+            "description": "Boolean to indicate if there are multiple credit hour options",
+            "name": "credit_hour_options",
             }
         ]
     }
@@ -105,7 +112,7 @@ def upload_data():
     client.schema.create_class(class_obj)
 
     data = ''
-    with open('data/final.json', 'r') as j:
+    with open('final4.json', 'r') as j:
         data = json.loads(j.read())
 
     with client.batch as batch:
@@ -122,14 +129,14 @@ def upload_data():
                 "name": d["Name"],
                 "description": d["Description"],
                 "credit_hours": d["Credit Hours"],
-                "degree_attrs": d["Degree Attributes"],
                 "avg_grade": d["Mean Grade"],
-                "degree_attrs_codes": d["Degree Attributes Codes"],
-                "full_subject": d["Subject"]
+                "degree_attrs": d["Degree Attributes"],
+                "full_subject": d["Subject"],
+                "credit_hour_options": d["Credit Options"]
             }
 
 
-            client.batch.add_data_object(properties, "Course", vector = embeddings_array[i%100])
+            client.batch.add_data_object(properties, "Uiuc_course_search", vector = embeddings_array[i%100])
 
 client = get_client()
 
@@ -138,20 +145,22 @@ upload_data()
 print("done")
 
 
-
-
 while True:
     input_str = input()
-    vector = get_vector({"inputs":input_str})['embeddings']
+    vector = get_vector(str(input_str))
+
+    where_filter = {  
+        "path": ["credit_hours"],
+        "operator": "Equal",
+        "valueInt": 7
+    }
 
     result = (
         client.query
-        .get("Course", ["subject", "course", "vectorized_description", "degree_attrs", "degree_attrs_codes"])
-        # .with_additional(['certainty'])
-        # .with_where(where_filter)
-        # .with_near_text(nearText)
+        .get("Uiuc_course_search", ["subject", "course", "description", "degree_attrs", "credit_hours"])
         .with_near_vector({"vector":vector})
-        .with_limit(10)
+        .with_where(where_filter)
+        .with_limit(3)
         .do()
     )
     print(json.dumps(result, indent=4))
