@@ -26,10 +26,10 @@ def batch_get_vector(start, end, data):
     return output
 
 def upload_data():
-    client.schema.delete_class("Uiuc_course_search")
+    client.schema.delete_class()
 
     class_obj = {
-        "class": "Uiuc_course_search",
+        "class": ,
         "vectorizer": "none",  
         "properties": [
             {
@@ -125,7 +125,7 @@ def upload_data():
             }
 
 
-            client.batch.add_data_object(properties, "Uiuc_course_search", vector = embeddings_array[i%100])
+            client.batch.add_data_object(properties, , vector = embeddings_array[i%100])
 
 client = get_client()
 
@@ -146,7 +146,7 @@ while True:
 
     result = (
         client.query
-        .get("Uiuc_course_search", ["subject", "course", "description", "degree_attrs", "credit_hours"])
+        .get(, ["subject", "course", "description", "degree_attrs", "credit_hours"])
         .with_near_vector({"vector":vector})
         .with_where(where_filter)
         .with_limit(3)
