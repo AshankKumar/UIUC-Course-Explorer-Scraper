@@ -10,7 +10,7 @@ A python webscraper to scrape courses from https://courses.illinois.edu//
 
 * term should be in the form: fall, spring, winter, summer
 * year should be in the form: YYYY
-* rate_limit is an optional argument to dictate the time slept in between each request
+* rate_limit is an optional argument to dictate the time slept in between each request in seconds. One second is used by default
 
 # Output
 
