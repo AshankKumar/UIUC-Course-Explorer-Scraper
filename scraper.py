@@ -1,48 +1,60 @@
-import sys
-from bs4 import BeautifulSoup
-import requests
-from collections import defaultdict
-import time
-import json
-import pandas as pd
+"""
+This script scrapes data based on the provided term and year.
+You can also set the rate limit for requests.
 
-def scrape(term, year, rate_limit=1):
+Usage:
+python scraper.py <term> <year> --rate_limit <rate_limit>
+"""
+
+from collections import defaultdict
+from datetime import datetime
+from bs4 import BeautifulSoup
+from tqdm import tqdm
+import sys
+import requests
+import time
+import pandas as pd
+import argparse
+
+# TODO add exponential backoff
+# TODO write to disk in chunks while iterating instead of all at once at the end
+def scrape(term, year, rate_limit):
     url = f'https://courses.illinois.edu/cisapp/explorer/schedule/{year}/{term}.xml'
     response = requests.get(url)
+
+    if response.status_code == 404:
+            print(f"Error: The URL '{url}' does not exist. Please check your term and year.")
+            sys.exit(1)
+
     soup = BeautifulSoup(response.content, 'lxml-xml')
 
     subject_tags = soup.find_all('subject')
     subjects = []
     for tag in subject_tags:
-        subject_id = tag['id']
-        href = tag['href']
-        subjects.append((subject_id, href))
-    
-    courses_dictionary = defaultdict(defaultdict)
-    i = 1
-    print ("Getting Pages for Subjects")
-    for subject_id, href in subjects:
-        response = requests.get(href)
-        soup = BeautifulSoup(response.content, 'lxml-xml')
-        subject_name = soup.find('label').text
-        courses = soup.find_all('course')
-        courses_dictionary[subject_id] = {'subject_name': subject_name, 'courses': [course['href'] for course in courses]}
-        print(f'{i}/{len(subjects)}')
-        i += 1
-        time.sleep(rate_limit)
-        break
+        major_id = tag['id']
+        # href = tag['href']
+        subjects.append(major_id)
 
-    print ("Getting Courses for each Subject")
+    courses_dictionary = defaultdict(defaultdict)
+    print ("Getting Pages for Majors") # http://courses.illinois.edu/cisapp/explorer/catalog/:year/:semester/:subjectCode
+    # for _, major_id in enumerate(tqdm(subjects, desc=f"Processing {major_id}"), start=1):
+    for major_id in (pbar := tqdm(subjects, position=1)):
+        pbar.set_description(f'Processing {major_id}')
+        response = requests.get(f'http://courses.illinois.edu/cisapp/explorer/catalog/{year}/{term}/{major_id}.xml')
+        soup = BeautifulSoup(response.content, 'lxml-xml')
+        major_name = soup.find('label').text
+        courses = soup.find_all('course')
+        courses_dictionary[major_id] = {'major_name': major_name, 'courses': [course['href'] for course in courses]}
+        time.sleep(rate_limit)         
+
+    print ("Getting Courses for each Major")
     data = []
-    for subject_id, subject_object in courses_dictionary.items():
-        print(f"Processing: {subject_id}")
-        subject_name = subject_object['subject_name']
+    for major_id, subject_object in courses_dictionary.items():
+        major_name = subject_object['major_name']
         courses = subject_object['courses']
-        i = 1
-        for c in courses:
+        for _, c in enumerate(tqdm(courses, desc=f"{major_id}"), start=1):
             try:
-                print(f'{subject_id}: {i}/{len(courses)}')
-                response = requests.get(c)
+                response = requests.get(c) #http://courses.illinois.edu/cisapp/explorer/schedule/:year/:semester/:subjectCode/:courseNumber
                 soup = BeautifulSoup(response.content, 'lxml-xml')
 
                 attributes = []
@@ -55,26 +67,44 @@ def scrape(term, year, rate_limit=1):
                 course_name = soup.label.text
                 course_number = c.rsplit('/', 1)[-1].split('.')[0]
 
-                new_row = [subject_name, subject_id, course_number, course_name, description, credit_hours, attributes]
+                new_row = [major_name, major_id, course_number, course_name, description, credit_hours, attributes]
                 data.append(new_row)
 
                 time.sleep(rate_limit)
-                i += 1
             except Exception as e:
                 print(e)
                 print(c)
-        break
+                
     df = pd.DataFrame(data, columns = ['Subject', 'Subject Abbreviation', 'Course', 'Name', 'Description', 'Credit Hours', 'Degree Attributes'])
     df.to_csv(f"{term}-{year}-courses.csv", index=False)
 
+def valid_year(string):
+    """Check if string is a valid year between 1900 and two years in the future from the current year."""
+    future_year = datetime.now().year + 2
+    if not string.isdigit() or int(string) < 1900 or int(string) > future_year:
+        message = f"Invalid year: '{string}'. Year must be between 1900 and {future_year}."
+        raise argparse.ArgumentTypeError(message)
+    return int(string)
 
-
+def parse_args():
+    parser = argparse.ArgumentParser(description='Scraper script.')
+    
+    parser.add_argument('term', type=str, choices=['fall', 'spring', 'winter', 'summer'], 
+                        help='Term in the form: fall, spring, winter, summer.')
+    
+    parser.add_argument('year', type=valid_year, help='Year in the form: YYYY.')
+    
+    parser.add_argument('--rate_limit', type=float, default=0.1, 
+                        help='Optional argument to dictate the time slept in between each request in seconds. A tenth of a second is used by default.')
+    
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    num_args = len(sys.argv) - 1
+    args = parse_args()
+    
+    term = args.term
+    year = args.year
+    rate_limit = args.rate_limit
 
-    if (num_args == 2):
-        term = sys.argv[1]
-        year = sys.argv[2]
-        scrape(term, year)
+    scrape(term, year, rate_limit)
