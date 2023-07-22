@@ -27,15 +27,15 @@ To run the script, use the following command:
 
 # Output
 
-The script will produce a CSV file named `<term>-<year>-courses.csv`. The CSV file will contain the following columns:
+The script will produce a CSV file named `<term>-<year>-courses.json`. The JSON file will contain the following data fields for each course:
 
-* Subject: The name of the subject (e.g., Computer Science)
-* Subject Abbreviation: The abbreviation of the subject (e.g., CS)
-* Course: The course number (e.g., 101)
-* Name: The name of the course (e.g., Introduction to Computer Science)
-* Description: A brief description of the course
-* Credit Hours: The number of credit hours for the course
-* Degree Attributes: Any general education categories the course falls under
+* Major: Denotes the course's major field of study, such as Computer Science.
+* Major Abbreviation: Represents the shortened form of the major field, for instance, CS for Computer Science.
+* Course Number: The course identifier, for example, 101.
+* Course Name: Refers to the official title of the course, such as Introduction to Computer Science.
+* Description: Provides a concise summary of the course content.
+* Credit Hours: Indicates the credit hours associated with the course.
+* Degree Attributes: Specifies any general education categories the course may fulfill.
 
 # Notes
 

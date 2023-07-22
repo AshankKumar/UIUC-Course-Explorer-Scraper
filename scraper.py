@@ -13,7 +13,7 @@ from tqdm import tqdm
 import sys
 import requests
 import time
-import pandas as pd
+import json
 import argparse
 
 # TODO add exponential backoff
@@ -37,7 +37,7 @@ def scrape(term, year, rate_limit):
     courses_dictionary = defaultdict(defaultdict)
     print("Getting Pages for Majors") # http://courses.illinois.edu/cisapp/explorer/catalog/:year/:semester/:subjectCode
     # for _, major_id in enumerate(tqdm(subjects, desc=f"Processing {major_id}"), start=1):
-    for major_id in (pbar := tqdm(subjects,  unit="major")):
+    for major_id in (pbar := tqdm(subjects, unit="major")):
         pbar.set_description(f'Processing {major_id}')
         response = requests.get(f'http://courses.illinois.edu/cisapp/explorer/catalog/{year}/{term}/{major_id}.xml')
         soup = BeautifulSoup(response.content, 'lxml-xml')
@@ -45,14 +45,19 @@ def scrape(term, year, rate_limit):
         courses = soup.find_all('course')
         courses_dictionary[major_id] = {'major_name': major_name, 'courses': [course['href'] for course in courses]}
         time.sleep(rate_limit)  
-    print("Finishsed getting pages for majors")
+    print("Finishsed getting pages for majors\n")
 
     print("Getting Courses for each Major")
     data = []
+
+    total_courses = sum(len(subject_object['courses']) for subject_object in courses_dictionary.values())
+    pbar = tqdm(total=total_courses, desc="Processing courses", unit="course")
+
     for major_id, subject_object in courses_dictionary.items():
         major_name = subject_object['major_name']
         courses = subject_object['courses']
-        for _, c in enumerate(tqdm(courses, desc=f"{major_id}"), start=1):
+        pbar.set_description(f'Processing {major_name}')
+        for c in courses:
             try:
                 response = requests.get(c) #http://courses.illinois.edu/cisapp/explorer/schedule/:year/:semester/:subjectCode/:courseNumber
                 soup = BeautifulSoup(response.content, 'lxml-xml')
@@ -67,17 +72,20 @@ def scrape(term, year, rate_limit):
                 course_name = soup.label.text
                 course_number = c.rsplit('/', 1)[-1].split('.')[0]
 
-                new_row = [major_name, major_id, course_number, course_name, description, credit_hours, attributes]
-                data.append(new_row)
+                new_entry = {'Major': major_name, 'Major Abbreviation': major_id, 'Course Number': course_number, 'Course Name': course_name, 'Description': description, 'Credit Hours': credit_hours, 'Degree Attributes': attributes}
+                data.append(new_entry)
 
                 time.sleep(rate_limit)
             except Exception as e:
-                print(e)
-                print(c)
+                tqdm.write(e)
+                tqdm.write(c)
+            pbar.update()   
+
+    pbar.close()
     print("Finished getting courses for each major")
                 
-    df = pd.DataFrame(data, columns = ['Subject', 'Subject Abbreviation', 'Course', 'Name', 'Description', 'Credit Hours', 'Degree Attributes'])
-    df.to_csv(f"{term}-{year}-courses.csv", index=False)
+    with open(f'{term}-{year}.json', 'w') as f:
+        json.dump(data, f, indent=4)
 
 def valid_year(string):
     """Check if string is a valid year between 1900 and two years in the future from the current year."""
