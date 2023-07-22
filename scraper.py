@@ -32,22 +32,22 @@ def scrape(term, year, rate_limit):
     subjects = []
     for tag in subject_tags:
         major_id = tag['id']
-        # href = tag['href']
         subjects.append(major_id)
 
     courses_dictionary = defaultdict(defaultdict)
-    print ("Getting Pages for Majors") # http://courses.illinois.edu/cisapp/explorer/catalog/:year/:semester/:subjectCode
+    print("Getting Pages for Majors") # http://courses.illinois.edu/cisapp/explorer/catalog/:year/:semester/:subjectCode
     # for _, major_id in enumerate(tqdm(subjects, desc=f"Processing {major_id}"), start=1):
-    for major_id in (pbar := tqdm(subjects, position=1)):
+    for major_id in (pbar := tqdm(subjects,  unit="major")):
         pbar.set_description(f'Processing {major_id}')
         response = requests.get(f'http://courses.illinois.edu/cisapp/explorer/catalog/{year}/{term}/{major_id}.xml')
         soup = BeautifulSoup(response.content, 'lxml-xml')
         major_name = soup.find('label').text
         courses = soup.find_all('course')
         courses_dictionary[major_id] = {'major_name': major_name, 'courses': [course['href'] for course in courses]}
-        time.sleep(rate_limit)         
+        time.sleep(rate_limit)  
+    print("Finishsed getting pages for majors")
 
-    print ("Getting Courses for each Major")
+    print("Getting Courses for each Major")
     data = []
     for major_id, subject_object in courses_dictionary.items():
         major_name = subject_object['major_name']
@@ -74,6 +74,7 @@ def scrape(term, year, rate_limit):
             except Exception as e:
                 print(e)
                 print(c)
+    print("Finished getting courses for each major")
                 
     df = pd.DataFrame(data, columns = ['Subject', 'Subject Abbreviation', 'Course', 'Name', 'Description', 'Credit Hours', 'Degree Attributes'])
     df.to_csv(f"{term}-{year}-courses.csv", index=False)
