@@ -18,6 +18,7 @@ import argparse
 
 # TODO add exponential backoff
 # TODO write to disk in chunks while iterating instead of all at once at the end
+# TODO add options for csv
 def scrape(term, year, rate_limit):
     url = f'https://courses.illinois.edu/cisapp/explorer/schedule/{year}/{term}.xml'
     response = requests.get(url)
@@ -36,7 +37,6 @@ def scrape(term, year, rate_limit):
 
     courses_dictionary = defaultdict(defaultdict)
     print("Getting Pages for Majors") # http://courses.illinois.edu/cisapp/explorer/catalog/:year/:semester/:subjectCode
-    # for _, major_id in enumerate(tqdm(subjects, desc=f"Processing {major_id}"), start=1):
     for major_id in (pbar := tqdm(subjects, unit="major")):
         pbar.set_description(f'Processing {major_id}')
         response = requests.get(f'http://courses.illinois.edu/cisapp/explorer/catalog/{year}/{term}/{major_id}.xml')
@@ -66,6 +66,7 @@ def scrape(term, year, rate_limit):
                 genEdCategories = soup.find('genEdCategories')
                 if genEdCategories:
                     attributes = [a.text for a in genEdCategories.find_all('description')]
+                attributes = sorted(attributes)
 
                 description = soup.description.text
                 credit_hours = soup.creditHours.text
@@ -77,7 +78,7 @@ def scrape(term, year, rate_limit):
 
                 time.sleep(rate_limit)
             except Exception as e:
-                tqdm.write(e)
+                tqdm.write(str(e))
                 tqdm.write(c)
             pbar.update()   
 
